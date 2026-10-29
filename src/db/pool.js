@@ -11,7 +11,13 @@ export function getDbPool() {
   if (pool) return pool;
 
   const poolConfig = config.db.connectionString
-    ? { connectionString: config.db.connectionString }
+    ? {
+        connectionString: config.db.connectionString,
+        max: config.db.maxPoolSize || 10,
+        connectionTimeoutMillis: 10000,
+        idleTimeoutMillis: 30000,
+        keepAlive: true,
+      }
     : {
         host: config.db.host,
         port: config.db.port,
@@ -19,7 +25,9 @@ export function getDbPool() {
         user: config.db.user,
         password: config.db.password,
         max: config.db.maxPoolSize,
-        connectionTimeoutMillis: config.db.connectionTimeoutMillis,
+        connectionTimeoutMillis: 10000,
+        idleTimeoutMillis: 30000,
+        keepAlive: true,
       };
 
   pool = new Pool(poolConfig);
@@ -31,36 +39,43 @@ export function getDbPool() {
 
   pool.on('error', (err) => {
     isConnected = false;
-    logger.error('Unexpected error on idle PostgreSQL client', { error: err.message });
+    logger.error('Unexpected error on idle PostgreSQL client', {
+      error: err.message,
+    });
   });
 
   return pool;
 }
 
-/**
- * Checks if the database is reachable.
- *
- * @returns {Promise<boolean>}
- */
 export async function checkDbHealth() {
+  let timeoutId;
+
   try {
     const currentPool = getDbPool();
-    const queryPromise = currentPool.query('SELECT 1 as alive');
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Postgres connection timeout')), 800)
-    );
-    const result = await Promise.race([queryPromise, timeoutPromise]);
-    isConnected = result.rows?.[0]?.alive === 1;
+
+    const result = await Promise.race([
+      currentPool.query('SELECT 1 AS alive'),
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error('Postgres connection timeout')),
+          5000
+        );
+      }),
+    ]);
+
+    isConnected = Number(result.rows?.[0]?.alive) === 1;
     return isConnected;
   } catch (err) {
     isConnected = false;
+    logger.warn('PostgreSQL health check failed', {
+      error: err.message,
+    });
     return false;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
-/**
- * Gracefully shuts down the PostgreSQL pool.
- */
 export async function closeDbPool() {
   if (pool) {
     logger.info('Closing PostgreSQL pool...');

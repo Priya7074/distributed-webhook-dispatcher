@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Distributed Webhook Dispatcher | Developer Console</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div class="brand">
+        <span class="logo-icon">⚡</span>
+        <div>
+          <h1>Distributed Webhook Dispatcher</h1>
+          <p class="subtitle">Production-grade Webhook Delivery System with BullMQ, Redis, PostgreSQL & SSRF Defense</p>
+        </div>
+      </div>
+      <div class="health-badge" id="systemHealthBadge">
+        <span class="dot"></span>
+        <span id="healthStatusText">Checking Status...</span>
+      </div>
+    </header>
+
+    <main class="container">
+      <!-- Preview Mode vs Production Banner -->
+      <div id="modeBanner" class="mode-banner preview-mode">
+        <div class="mode-banner-header">
+          <span class="mode-icon">⚠️</span>
+          <strong id="modeTitle">Standalone Preview Mode Active</strong>
+        </div>
+        <p id="modeDesc" class="mode-desc">
+          The Express HTTP server is running safely on port 3000 without requiring real credentials. Real background job queueing (BullMQ) and persistent audit logging (PostgreSQL) require external backing services.
+        </p>
+        <div class="service-pills">
+          <span class="pill pill-green">🟢 Server: Online</span>
+          <span id="redisPill" class="pill pill-red">🔴 Redis (BullMQ): Disconnected</span>
+          <span id="dbPill" class="pill pill-red">🔴 PostgreSQL: Disconnected</span>
+        </div>
+      </div>
+
+      <!-- Status & Architecture Overview Cards -->
+      <section class="overview-grid">
+        <div class="card stat-card">
+          <div class="card-icon">📬</div>
+          <div class="card-content">
+            <span class="stat-label">Queue & Retries</span>
+            <span class="stat-value">BullMQ + Redis</span>
+            <span class="stat-detail">3 retries, exponential backoff</span>
+          </div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="card-icon">🛡️</div>
+          <div class="card-content">
+            <span class="stat-label">SSRF Protection</span>
+            <span class="stat-value">Active</span>
+            <span class="stat-detail">Blocks loopback, RFC1918 & cloud metadata</span>
+          </div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="card-icon">⏱️</div>
+          <div class="card-content">
+            <span class="stat-label">Per-Dest Rate Limit</span>
+            <span class="stat-value">Token Bucket</span>
+            <span class="stat-detail">10 cap, 2 tokens/sec per host</span>
+          </div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="card-icon">🗄️</div>
+          <div class="card-content">
+            <span class="stat-label">Audit Persistence</span>
+            <span class="stat-value">PostgreSQL</span>
+            <span class="stat-detail">Indexed delivery attempt logs</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Interactive Dispatcher Console -->
+      <section class="grid-2col">
+        <div class="card">
+          <div class="card-header">
+            <h2>🚀 Dispatch Webhook</h2>
+            <span class="endpoint-badge">POST /api/webhooks/dispatch</span>
+          </div>
+
+          <!-- Presets -->
+          <div class="preset-selector">
+            <label>Test Scenarios:</label>
+            <div class="button-group">
+              <button class="btn btn-outline" onclick="loadPreset('success')">200 OK</button>
+              <button class="btn btn-outline" onclick="loadPreset('retry_500')">500 (Retryable)</button>
+              <button class="btn btn-outline" onclick="loadPreset('retry_429')">429 (Rate Limit)</button>
+              <button class="btn btn-outline" onclick="loadPreset('permanent_404')">404 (Permanent)</button>
+              <button class="btn btn-outline" onclick="loadPreset('ssrf_local')">SSRF Localhost</button>
+              <button class="btn btn-outline" onclick="loadPreset('ssrf_metadata')">SSRF Cloud Meta</button>
+            </div>
+          </div>
+
+          <form id="dispatchForm" class="dispatch-form">
+            <div class="form-group">
+              <label for="destinationUrl">Destination URL:</label>
+              <input
+                type="text"
+                id="destinationUrl"
+                name="destinationUrl"
+                required
+                placeholder="https://webhook.site/... or /api/test/receiver"
+              />
+              <span class="field-hint">Supports external URLs or local mock receiver (<code>/api/test/receiver?status=200</code>)</span>
+            </div>
+
+            <div class="form-group">
+              <label for="eventId">Event ID:</label>
+              <input
+                type="text"
+                id="eventId"
+                name="eventId"
+                required
+                placeholder="evt_order_created_12345"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="payload">JSON Payload:</label>
+              <textarea
+                id="payload"
+                name="payload"
+                rows="6"
+                required
+                placeholder='{"orderId": "ord_99", "amount": 49.99, "currency": "USD"}'
+              ></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="dispatchSubmitBtn">
+              Dispatch Webhook (Immediate 202 Accepted)
+            </button>
+          </form>
+
+          <div id="dispatchResponse" class="dispatch-response hidden">
+            <h3>Immediate Dispatch Response:</h3>
+            <pre><code id="dispatchResponseCode"></code></pre>
+          </div>
+        </div>
+
+        <!-- System Architecture & Curl Reference -->
+        <div class="card">
+          <div class="card-header">
+            <h2>📖 Quick API Reference</h2>
+            <span class="badge">cURL</span>
+          </div>
+
+          <p class="section-desc">Test with cURL from your terminal:</p>
+
+          <div class="code-box">
+            <pre><code>curl -X POST http://localhost:3000/api/webhooks/dispatch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "destinationUrl": "http://localhost:3000/api/test/receiver?status=200",
+    "eventId": "evt_test_001",
+    "payload": {
+      "action": "payment.succeeded",
+      "customer": "cust_42",
+      "amount": 2500
+    }
+  }'</code></pre>
+          </div>
+
+          <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 1rem;">System Guarantees:</h3>
+          <ul class="feature-list">
+            <li><strong>Immediate 202:</strong> API never blocks on slow destinations. Jobs queue instantly.</li>
+            <li><strong>Exponential Backoff:</strong> 3 retries (delays: 1s, 2s, 4s).</li>
+            <li><strong>Smart Error Separation:</strong> Retries 5xx & 429; stops immediately on permanent 4xx.</li>
+            <li><strong>SSRF Defense:</strong> Validates DNS resolution against RFC1918, loopbacks, and cloud metadata (169.254.169.254).</li>
+            <li><strong>Per-Destination Token Bucket:</strong> Throttles traffic per destination host.</li>
+            <li><strong>Audit Logging:</strong> Every attempt records timestamp, status, outcome, duration, and error details in PostgreSQL.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Live Delivery Logs Table -->
+      <section class="card logs-section">
+        <div class="card-header">
+          <div>
+            <h2>📋 Delivery Attempt Audit Logs</h2>
+            <p class="subtitle">Persisted in PostgreSQL (with in-memory live stream)</p>
+          </div>
+          <div class="logs-actions">
+            <button class="btn btn-outline" id="refreshLogsBtn">↻ Refresh Logs</button>
+            <label class="auto-refresh-label">
+              <input type="checkbox" id="autoRefreshToggle" checked /> Auto-refresh (2s)
+            </label>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="logs-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Event ID</th>
+                <th>Job ID</th>
+                <th>Destination URL</th>
+                <th>Attempt</th>
+                <th>Outcome</th>
+                <th>HTTP Status</th>
+                <th>Latency</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="logsTableBody">
+              <tr>
+                <td colspan="9" class="empty-state">No delivery attempts recorded yet. Dispatch a webhook above!</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Distributed Webhook Dispatcher • Node.js, Express, BullMQ, Redis, PostgreSQL</p>
+    </footer>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

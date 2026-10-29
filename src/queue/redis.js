@@ -1,3 +1,4 @@
+
 import Redis from 'ioredis';
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
@@ -13,25 +14,28 @@ let isConnected = false;
 export function getRedisClient() {
   if (redisClient) return redisClient;
 
-  const redisOptions = config.redis.url
-    ? config.redis.url
-    : {
-        host: config.redis.host,
-        port: config.redis.port,
-        password: config.redis.password,
-        maxRetriesPerRequest: null, // Required by BullMQ
-        enableReadyCheck: true,
-        retryStrategy(times) {
-          if (process.env.NODE_ENV === 'test' && times > 1) {
-            return null; // Stop reconnection loop in test mode
-          }
-          // Exponential retry strategy with 3s maximum delay
-          const delay = Math.min(times * 200, 3000);
-          return delay;
-        },
-      };
+  const redisOptions = {
+    maxRetriesPerRequest: null, // Required by BullMQ
+    retryStrategy(times) {
+      if (process.env.NODE_ENV === 'test' && times > 1) {
+        return null;
+      }
 
-  redisClient = new Redis(redisOptions);
+      return Math.min(times * 200, 3000);
+    },
+  };
+
+  if (config.redis.url) {
+    redisClient = new Redis(config.redis.url, redisOptions);
+  } else {
+    redisClient = new Redis({
+      ...redisOptions,
+      host: config.redis.host,
+      port: config.redis.port,
+      password: config.redis.password,
+      enableReadyCheck: true,
+    });
+  }
 
   redisClient.on('connect', () => {
     logger.info('Connected to Redis');
@@ -44,7 +48,9 @@ export function getRedisClient() {
 
   redisClient.on('error', (err) => {
     isConnected = false;
-    logger.warn(`Redis connection error: ${err.message}. To run Redis locally: docker compose up -d`);
+    logger.warn(
+      `Redis connection error: ${err.message}. To run Redis locally: docker compose up -d`
+    );
   });
 
   redisClient.on('close', () => {
@@ -62,16 +68,15 @@ export function getRedisClient() {
 export async function checkRedisHealth() {
   try {
     const client = getRedisClient();
+
     if (!client || client.status !== 'ready') {
       isConnected = false;
       return false;
     }
-    const pingPromise = client.ping();
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), 500)
-    );
-    const ping = await Promise.race([pingPromise, timeoutPromise]);
+
+    const ping = await client.ping();
     isConnected = ping === 'PONG';
+
     return isConnected;
   } catch {
     isConnected = false;

@@ -1,3 +1,4 @@
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -9,6 +10,11 @@ import { config } from '../src/config/index.js';
 
 test('Dispatcher - Successful Webhook Delivery and Audit Logging', async () => {
   clearInMemoryLogs();
+
+  // Generate unique IDs for every test run
+  const eventId = `evt_order_${Date.now()}`;
+  const jobId = `job_test_success_${Date.now()}`;
+
   const prevAllow = config.security.allowLocalDestinations;
   config.security.allowLocalDestinations = true;
 
@@ -19,7 +25,9 @@ test('Dispatcher - Successful Webhook Delivery and Audit Logging', async () => {
   const server = http.createServer((req, res) => {
     receivedHeaders = req.headers;
     let body = '';
+
     req.on('data', (chunk) => (body += chunk));
+
     req.on('end', () => {
       receivedBody = JSON.parse(body);
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -28,6 +36,7 @@ test('Dispatcher - Successful Webhook Delivery and Audit Logging', async () => {
   });
 
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+
   const port = server.address().port;
   const destinationUrl = `http://127.0.0.1:${port}/webhook/order-events`;
 
@@ -40,10 +49,10 @@ test('Dispatcher - Successful Webhook Delivery and Audit Logging', async () => {
   try {
     const result = await sendWebhook({
       destinationUrl,
-      eventId: 'evt_order_12345',
+      eventId,
       payload,
       attemptNumber: 1,
-      jobId: 'job_test_success_1',
+      jobId,
     });
 
     // 1. Verify dispatch result
@@ -53,7 +62,7 @@ test('Dispatcher - Successful Webhook Delivery and Audit Logging', async () => {
     assert.equal(result.retryable, false);
 
     // 2. Verify receiver received all expected headers
-    assert.equal(receivedHeaders['x-event-id'], 'evt_order_12345');
+    assert.equal(receivedHeaders['x-event-id'], eventId);
     assert.equal(receivedHeaders['x-attempt-number'], '1');
     assert.ok(receivedHeaders['x-delivery-timestamp']);
 
@@ -65,13 +74,15 @@ test('Dispatcher - Successful Webhook Delivery and Audit Logging', async () => {
     assert.deepEqual(receivedBody, payload);
 
     // 5. Verify audit log entry
-    const logs = await getDeliveryLogs({ eventId: 'evt_order_12345' });
+    const logs = await getDeliveryLogs({ eventId });
+
     assert.equal(logs.length, 1);
-    assert.equal(logs[0].event_id, 'evt_order_12345');
-    assert.equal(logs[0].job_id, 'job_test_success_1');
+    assert.equal(logs[0].event_id, eventId);
+    assert.equal(logs[0].job_id, jobId);
     assert.equal(logs[0].outcome, 'SUCCESS');
     assert.equal(logs[0].http_status, 200);
     assert.equal(logs[0].attempt_number, 1);
+
   } finally {
     server.close();
     config.security.allowLocalDestinations = prevAllow;

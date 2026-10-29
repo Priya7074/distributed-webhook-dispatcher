@@ -1,0 +1,65 @@
+services:
+  # Redis service for BullMQ background queue and distributed rate limiting
+  redis:
+    image: redis:7-alpine
+    container_name: webhook_dispatcher_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # PostgreSQL database for persistent webhook delivery attempt logs
+  postgres:
+    image: postgres:15-alpine
+    container_name: webhook_dispatcher_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: webhook_dispatcher
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/001_create_webhook_logs.sql:/docker-entrypoint-initdb.d/001_create_webhook_logs.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d webhook_dispatcher"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Webhook Dispatcher Application Service
+  app:
+    build: .
+    container_name: webhook_dispatcher_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: webhook_dispatcher
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      ALLOW_LOCAL_DESTINATIONS: "false"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+volumes:
+  redis_data:
+  postgres_data:

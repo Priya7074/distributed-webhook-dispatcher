@@ -1,0 +1,6 @@
+{
+  "name": "Distributed Webhook Dispatcher",
+  "description": "Production-grade, resilient distributed webhook delivery service built with Node.js, Express, BullMQ, Redis, and PostgreSQL featuring exponential retries, SSRF defense, per-destination rate limiting, and structured audit logs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

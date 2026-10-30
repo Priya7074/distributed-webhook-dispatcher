@@ -22,7 +22,7 @@ Designed to handle high-volume webhook delivery with **resilient exponential ret
                         â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
                         â”‚    Redis / BullMQ Job Queue     â”‚
                         â”‚  - 3 Retries (4 total attempts) â”‚
-                        â”‚  - Exponential Backoff (1s,2s..)â”‚
+                        â”‚  - Exponential Backoff (2s,4s,8s)â”‚
                         â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
                                          â”‚ Pull Job
                                          â–¼
@@ -428,4 +428,5 @@ POST https://distributed-webhook-dispatcher-8o75.onrender.com/api/webhooks/dispa
 - Webhook request timeout: 10 seconds
 - Per-destination token bucket: 10-token capacity, 2 tokens/second refill
 - Worker concurrency: 5
+
 

@@ -1,4 +1,4 @@
-# Distributed Webhook Dispatcher
+﻿# Distributed Webhook Dispatcher
 
 A reliable, production-grade distributed webhook delivery engine built with **Node.js**, **Express.js**, **BullMQ**, **Redis**, and **PostgreSQL**.
 
@@ -6,47 +6,47 @@ Designed to handle high-volume webhook delivery with **resilient exponential ret
 
 ---
 
-## 🏗️ Architecture Overview
+## ðŸ—ï¸ Architecture Overview
 
 ```
                       [ Client Application / Event Producer ]
-                                         │
-                                         ▼ POST /api/webhooks/dispatch
-                        ┌─────────────────────────────────┐
-                        │   Express API Ingestion Layer   │
-                        │  - Payload Validation (< 256kb) │
-                        │  - Anti-SSRF Pre-flight Check   │
-                        └────────────────┬────────────────┘
-                                         │ Enqueue (HTTP 202 Accepted)
-                                         ▼
-                        ┌─────────────────────────────────┐
-                        │    Redis / BullMQ Job Queue     │
-                        │  - 3 Retries (4 total attempts) │
-                        │  - Exponential Backoff (1s,2s..)│
-                        └────────────────┬────────────────┘
-                                         │ Pull Job
-                                         ▼
-                        ┌─────────────────────────────────┐
-                        │      BullMQ Worker Process      │
-                        │  - Per-Destination Token Bucket │
-                        │  - SSRF Verification & Redirects│
-                        │  - HMAC-SHA256 Signature Header │
-                        │  - HTTP POST with Timeout (5s)  │
-                        └───────┬─────────────────┬───────┘
-                                │                 │
-                       HTTP POST│                 │ Insert Audit Log
-                                ▼                 ▼
-                    ┌───────────────────┐  ┌───────────────────┐
-                    │ Destination URL   │  │ PostgreSQL DB     │
-                    │ (Customer Server) │  │ - Job ID, Event ID│
-                    │ 2xx / 4xx / 5xx   │  │ - Status, Outcome │
-                    └───────────────────┘  │ - Latency & Errors│
-                                           └───────────────────┘
+                                         â”‚
+                                         â–¼ POST /api/webhooks/dispatch
+                        â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                        â”‚   Express API Ingestion Layer   â”‚
+                        â”‚  - Payload Validation (< 256kb) â”‚
+                        â”‚  - Anti-SSRF Pre-flight Check   â”‚
+                        â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                         â”‚ Enqueue (HTTP 202 Accepted)
+                                         â–¼
+                        â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                        â”‚    Redis / BullMQ Job Queue     â”‚
+                        â”‚  - 3 Retries (4 total attempts) â”‚
+                        â”‚  - Exponential Backoff (1s,2s..)â”‚
+                        â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                         â”‚ Pull Job
+                                         â–¼
+                        â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                        â”‚      BullMQ Worker Process      â”‚
+                        â”‚  - Per-Destination Token Bucket â”‚
+                        â”‚  - SSRF Verification & Redirectsâ”‚
+                        â”‚  - HMAC-SHA256 Signature Header â”‚
+                        â”‚  - HTTP POST with Timeout (10s)  â”‚
+                        â””â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”˜
+                                â”‚                 â”‚
+                       HTTP POSTâ”‚                 â”‚ Insert Audit Log
+                                â–¼                 â–¼
+                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                    â”‚ Destination URL   â”‚  â”‚ PostgreSQL DB     â”‚
+                    â”‚ (Customer Server) â”‚  â”‚ - Job ID, Event IDâ”‚
+                    â”‚ 2xx / 4xx / 5xx   â”‚  â”‚ - Status, Outcome â”‚
+                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â”‚ - Latency & Errorsâ”‚
+                                           â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ---
 
-## 🌟 Key Engineering Highlights
+## ðŸŒŸ Key Engineering Highlights
 
 ### 1. Asynchronous Ingestion (Immediate HTTP 202 Accepted)
 - `POST /api/webhooks/dispatch` never blocks waiting for the customer's server.
@@ -54,16 +54,16 @@ Designed to handle high-volume webhook delivery with **resilient exponential ret
 
 ### 2. Configurable Exponential Retries
 - Configured for **3 retries after the initial attempt** (4 attempts total).
-- Exponential backoff algorithm (`backoff: { type: 'exponential', delay: 1000 }`):
+- Exponential backoff algorithm (`backoff: { type: 'exponential', delay: 2000 }`):
   - Attempt 1: Immediate
-  - Attempt 2 (Retry 1): ~1,000 ms delay
-  - Attempt 3 (Retry 2): ~2,000 ms delay
-  - Attempt 4 (Retry 3): ~4,000 ms delay
+  - Attempt 2 (Retry 1): ~2,000 ms delay
+  - Attempt 3 (Retry 2): ~4,000 ms delay
+  - Attempt 4 (Retry 3): ~8,000 ms delay
 
 ### 3. Smart Retryable vs. Permanent Failure Classification
 - **Retryable Failures** (rescheduled via BullMQ):
   - Network errors (`ECONNREFUSED`, `ENOTFOUND`, `ETIMEDOUT`)
-  - Request timeouts (aborted after 5,000 ms)
+  - Request timeouts (aborted after 10,000 ms)
   - `HTTP 429 Too Many Requests` (destination rate limit)
   - `HTTP 5xx` Server Errors (500, 502, 503, 504)
 - **Permanent Failures** (halted immediately, **not** endlessly retried):
@@ -95,7 +95,7 @@ Designed to handle high-volume webhook delivery with **resilient exponential ret
 
 ---
 
-## 📋 Required Backing Services
+## ðŸ“‹ Required Backing Services
 
 Before running the application in a full production environment, the following two external services must be configured and running:
 
@@ -111,7 +111,7 @@ Before running the application in a full production environment, the following t
 
 ---
 
-## 🚀 Quick Start Guide
+## ðŸš€ Quick Start Guide
 
 ### Option A: 1-Command Startup with Docker Compose (Recommended)
 
@@ -170,7 +170,7 @@ Visit `http://localhost:3000` to access the interactive Developer Console & API 
 
 ---
 
-## 🧪 Running Automated Tests
+## ðŸ§ª Running Automated Tests
 
 Run the comprehensive test suite verifying delivery, retries, SSRF defense, rate limiting, and input validation:
 
@@ -187,7 +187,7 @@ Test coverage includes:
 
 ---
 
-## 📡 API Reference & cURL Examples
+## ðŸ“¡ API Reference & cURL Examples
 
 ### 1. Dispatch a Webhook
 
@@ -330,7 +330,7 @@ curl -X POST http://localhost:3000/api/webhooks/dispatch \
 
 ---
 
-## 🔒 Security & Webhook Signatures
+## ðŸ”’ Security & Webhook Signatures
 
 Every outbound webhook includes security headers:
 - `Content-Type: application/json`
@@ -354,50 +354,78 @@ function verifyWebhook(payloadString, signatureHeader, secret) {
 
 ---
 
-## 📁 Project Directory Structure
+## ðŸ“ Project Directory Structure
 
 ```
 .
-├── .env.example              # Documented environment variables template
-├── docker-compose.yml        # Redis, PostgreSQL, and App orchestration
-├── Dockerfile                # Production multi-stage container build
-├── package.json              # Project scripts and dependencies
-├── README.md                 # Complete system documentation
-├── migrations/
-│   └── 001_create_webhook_logs.sql # PostgreSQL schema and indexes
-├── scripts/
-│   └── migrate.js            # Automated migration execution script
-├── src/
-│   ├── app.js                # Express app setup and middleware
-│   ├── server.js             # HTTP server entry point and graceful shutdown
-│   ├── config/
-│   │   └── index.js          # Central configuration management
-│   ├── db/
-│   │   ├── pool.js           # PostgreSQL connection pool with resilience
-│   │   └── logsRepository.js # Delivery attempt log persistence
-│   ├── queue/
-│   │   ├── redis.js          # Redis client and connection checks
-│   │   ├── webhookQueue.js   # BullMQ Queue instance and job enqueueing
-│   │   └── webhookWorker.js  # BullMQ Worker and execution logic
-│   ├── services/
-│   │   ├── dispatcher.js     # HTTP client, header creation, redirect validation
-│   │   ├── rateLimiter.js    # Per-destination Token Bucket rate limiter
-│   │   └── ssrfValidator.js  # Anti-SSRF URL and DNS IP range verification
-│   ├── routes/
-│   │   ├── webhookRoutes.js  # /api/webhooks/dispatch and /api/webhooks/logs
-│   │   ├── healthRoutes.js   # /health and /ready probes
-│   │   └── testReceiverRoutes.js # /api/test/receiver mock endpoint
-│   ├── utils/
-│   │   ├── logger.js         # Structured JSON logger
-│   │   └── signature.js      # HMAC-SHA256 signature generator
-│   └── public/
-│       ├── index.html        # Interactive Developer Console & Documentation
-│       ├── app.js            # Frontend dashboard scripts
-│       └── style.css         # Dashboard styling
-└── tests/
-    ├── ssrfValidator.test.js # SSRF range and URL validation tests
-    ├── rateLimiter.test.js   # Token bucket burst and refill tests
-    ├── validation.test.js    # API input and payload size tests
-    ├── retryAndFailure.test.js # Retryable vs non-retryable failure tests
-    └── dispatcher.test.js    # End-to-end delivery and signature tests
+â”œâ”€â”€ .env.example              # Documented environment variables template
+â”œâ”€â”€ docker-compose.yml        # Redis, PostgreSQL, and App orchestration
+â”œâ”€â”€ Dockerfile                # Production multi-stage container build
+â”œâ”€â”€ package.json              # Project scripts and dependencies
+â”œâ”€â”€ README.md                 # Complete system documentation
+â”œâ”€â”€ migrations/
+â”‚   â””â”€â”€ 001_create_webhook_logs.sql # PostgreSQL schema and indexes
+â”œâ”€â”€ scripts/
+â”‚   â””â”€â”€ migrate.js            # Automated migration execution script
+â”œâ”€â”€ src/
+â”‚   â”œâ”€â”€ app.js                # Express app setup and middleware
+â”‚   â”œâ”€â”€ server.js             # HTTP server entry point and graceful shutdown
+â”‚   â”œâ”€â”€ config/
+â”‚   â”‚   â””â”€â”€ index.js          # Central configuration management
+â”‚   â”œâ”€â”€ db/
+â”‚   â”‚   â”œâ”€â”€ pool.js           # PostgreSQL connection pool with resilience
+â”‚   â”‚   â””â”€â”€ logsRepository.js # Delivery attempt log persistence
+â”‚   â”œâ”€â”€ queue/
+â”‚   â”‚   â”œâ”€â”€ redis.js          # Redis client and connection checks
+â”‚   â”‚   â”œâ”€â”€ webhookQueue.js   # BullMQ Queue instance and job enqueueing
+â”‚   â”‚   â””â”€â”€ webhookWorker.js  # BullMQ Worker and execution logic
+â”‚   â”œâ”€â”€ services/
+â”‚   â”‚   â”œâ”€â”€ dispatcher.js     # HTTP client, header creation, redirect validation
+â”‚   â”‚   â”œâ”€â”€ rateLimiter.js    # Per-destination Token Bucket rate limiter
+â”‚   â”‚   â””â”€â”€ ssrfValidator.js  # Anti-SSRF URL and DNS IP range verification
+â”‚   â”œâ”€â”€ routes/
+â”‚   â”‚   â”œâ”€â”€ webhookRoutes.js  # /api/webhooks/dispatch and /api/webhooks/logs
+â”‚   â”‚   â”œâ”€â”€ healthRoutes.js   # /health and /ready probes
+â”‚   â”‚   â””â”€â”€ testReceiverRoutes.js # /api/test/receiver mock endpoint
+â”‚   â”œâ”€â”€ utils/
+â”‚   â”‚   â”œâ”€â”€ logger.js         # Structured JSON logger
+â”‚   â”‚   â””â”€â”€ signature.js      # HMAC-SHA256 signature generator
+â”‚   â””â”€â”€ public/
+â”‚       â”œâ”€â”€ index.html        # Interactive Developer Console & Documentation
+â”‚       â”œâ”€â”€ app.js            # Frontend dashboard scripts
+â”‚       â””â”€â”€ style.css         # Dashboard styling
+â””â”€â”€ tests/
+    â”œâ”€â”€ ssrfValidator.test.js # SSRF range and URL validation tests
+    â”œâ”€â”€ rateLimiter.test.js   # Token bucket burst and refill tests
+    â”œâ”€â”€ validation.test.js    # API input and payload size tests
+    â”œâ”€â”€ retryAndFailure.test.js # Retryable vs non-retryable failure tests
+    â””â”€â”€ dispatcher.test.js    # End-to-end delivery and signature tests
 ```
+
+
+---
+
+## Live Deployment
+
+**Public API Base URL:**
+
+https://distributed-webhook-dispatcher-8o75.onrender.com
+
+**Health Check:**
+
+https://distributed-webhook-dispatcher-8o75.onrender.com/health
+
+**Dispatch Endpoint:**
+
+POST https://distributed-webhook-dispatcher-8o75.onrender.com/api/webhooks/dispatch
+
+### Production Configuration
+
+- Queue: BullMQ with Redis
+- Persistent delivery logs: PostgreSQL
+- Maximum attempts: 4 (1 initial + 3 retries)
+- Exponential retry delays: 2s, 4s, 8s
+- Webhook request timeout: 10 seconds
+- Per-destination token bucket: 10-token capacity, 2 tokens/second refill
+- Worker concurrency: 5
+
